@@ -56,22 +56,27 @@ exports.vote = async (req, res) => {
 
   try {
     const photoToUpdate = await Photo.findOne({ _id: req.params.id });
+    const photoVoter = await Voter.findOne({user: req.ip});
     if(!photoToUpdate) res.status(404).json({ message: 'Not found' });
-    else if (!Voter.findOne({user: req.ip})) {
+    else if (!photoVoter) {
       photoToUpdate.votes++;
-      photoToUpdate.save();
+      await photoToUpdate.save();
       const newVoter = new Voter({ user: req.ip, votes: [] });
       newVoter.votes.push(req.params.id);
       await newVoter.save(); 
       res.send({ message: 'OK' });
-    } else if (Voter.findOne({user: req.ip}) && !Voter.findOne({user: req.ip}).includes(req.params.id)) {
+    } else if (!photoVoter.votes.includes(req.params.id)) {
       photoToUpdate.votes++;
-      photoToUpdate.save();
-      Voter.findOne({user: req.ip}).votes.push(req.params.id);
+      await photoToUpdate.save();
+      photoVoter.votes.push(req.params.id);
+      await photoVoter.save();
     } else {
+      console.log(photoVoter.votes, req.params.id);
       console.log('You can vote only once for this photo');
+      res.status(500).json({message: 'You can vote only once for this photo'});
     }
   } catch(err) {
+    console.log(err);
     res.status(500).json(err);
   }
 
